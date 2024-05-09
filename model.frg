@@ -4,13 +4,13 @@ option problem_type temporal
 // option min_tracelength = 15
 
 sig Tile {
-	var next: one Tile,
-    var back: one Tile, //are we gonna do this 
-    var index: one Int,
-    var color: one Color
+	next: one Tile,
+    back: one Tile, //are we gonna do this 
+    index: one Int,
+    color: one Color
 }
 
-sig Color {}
+abstract sig Color {}
 
 sig Red extends Color {}
 sig Blue extends Color {}
@@ -37,25 +37,46 @@ sig Board { //Board sig
 
 pred wellformed[b: Board] {
 	-- all nodes are reachable from the root
-    
-    all t : b.board | {
-        lone t : b.board | t.index = 0
-        (#{r : t.color | r in Red} = 8)
-        (#{g : t.color | g in Green } = 5)
-        (#{b : t.color | b in Blue } = subtract[#{b.board}, 13])
-        // Root->(t - Root) in ^next
-        // (#{b : t.color | b in Blue } = 3)
+    all t : Tile { 
+        t in b.board
         t.next != t
         t.back != t
-        // t.back.next = t
-        // t.next.back = t
-        // t.next.index = 
-        t.index != 0 implies t.index = add[t.back.index, 1] 
+        t.index != 0 implies {
+            t.index = add[t.back.index, 1] 
+            // t.index = subtract[t.next.index, 1]
+            t.index > 0
+        }
+        all disj t1, t2 : Tile | {
+            t1.index != t2.index
+            t1.next != t2.next
+            t1.back != t2.back
+            t1.next = t2 implies {{t2.index = add[t1.index, 1]} and {t1.index = subtract[t2.index, 1]}} or t2.index = 0 
+        }
+
     }
-    all disj t1, t2 : b.board | {
-        t1.index != t2.index
-        // t1.next = t2 implies {t2.index = add[t1.index, 1]}
-    }
+    one t : b.board | t.index = 0
+    // all t : b.board | {
+    //     // one t : b.board | {t.index = 0 and t.next.index = 1}
+    //     // (#{r : t.color | r in Red} = 8)
+    //     // (#{g : t.color | g in Green } = 5)
+    //     // (#{b : t.color | b in Blue } = subtract[#{b.board}, 13])
+    //     // // Root->(t - Root) in ^next
+    //     // // (#{b : t.color | b in Blue } = 3)
+    //     t.next != t
+    //     t.back != t
+    //     // // t.back.next = t
+    //     // // t.next.back = t
+    //     // // t.next.index = 
+        
+    //     t.index != 0 implies {
+    //         t.index = add[t.back.index, 1] 
+    //         t.index = subtract[t.next.index, 1]
+    //         t.index > 0
+    //     }
+    //     t.index >= 0
+    
+    // }
+    
     // one t : b.board | t = Root
 
     // all disj tile, nextTile, notNextTile : b.board | {
@@ -138,9 +159,9 @@ pred final {
 }
 
 pred trace_base {
-    always wellformedall
-    init
-    some p: Player | eventually move[p, 1]
+    wellformedall
+    // init
+    // some p: Player | eventually move[p, 1]
     // eventually final
 }
 
@@ -148,5 +169,5 @@ pred wellformedall {
     all b: Board | wellformed[b]
 }
 
-run { trace_base } for 8 Int, exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 16 Tile
+run { trace_base } for exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 6 Tile, 1 Red, 1 Blue, 1 Green
 // run { wellformedall } for 7 Int, exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 16 Tile
