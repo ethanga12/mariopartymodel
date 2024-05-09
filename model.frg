@@ -43,30 +43,34 @@ pred wellformed[b: Board] {
             t1.back != t2.back
             t1.next = t2 implies {{t2.index = add[t1.index, 1]} and {t1.index = subtract[t2.index, 1]}} or t2.index = 0 
         }
-        
-
     }
     (#{r : b.board | r.color = Red} = 1) // 2
     (#{g : b.board | g.color = Green } = 1) // 1
     (#{bl : b.board | bl.color = Blue } = 2) // 5
     one t : b.board | t.index = 0
+
+    Star.tile in b.board and Star.tile.index > 2
 }
 
 abstract sig Player {
     var coins: one Int,
     var position: one Tile,
-    var stars: set Star, 
+    // var stars: set Star,
+    var stars: one Int,
     var items: set Item
 }
 
-abstract sig Item {
-    // name: one 
-}
+abstract sig Item {}
 sig Mushroom extends Item {} //sends them forward 3
 sig FireFlower extends Item {} //Sends them back 3
-sig Star extends Item {
-    tile: one Int
-} //not sure if this is the best way to do this
+sig GenieLamp extends Item {} //Sends them to the current location of the star
+// sig Star extends Item {
+//     var tile: one Int
+// } //not sure if this is the best way to do this
+
+one sig Star {
+    var tile: one Tile
+}
 
 one sig Mario extends Player {}
 one sig Luigi extends Player {}
@@ -94,7 +98,6 @@ pred move[p: Player, r: Int] {
                 -- get the last index of the board, subtract from the current index, and add to r to get the new index
                 moveTo.index = add[subtract[current.index, #{Tile}], r]
             }
-            // p.position' = moveTo
             
         }
 
@@ -150,7 +153,13 @@ pred move[p: Player, r: Int] {
                             -- move to that tile instead of the original moveTo
                             p.position' = tileAfterItem
                         }
-                    } else {
+                    }
+                    i in GenieLamp => {
+                        p.position' = Star.tile
+                        p.stars' = add[p.stars, 1]
+                        starMove
+                    }
+                    i in FireFlower => {
                         p.position' = moveTo
                     }
                     // i in FireFlower => {
@@ -171,30 +180,8 @@ pred move[p: Player, r: Int] {
         }
         moveTo.color = Green => {
             p.coins' = p.coins
-            // item in Mushroom or item in FireFlower
-            // item not in p.items
             p.items' = p.items + item
             p.position' = moveTo
-            // #{p.items'} != add[#{p.items}, 1] and {
-            //     some i, i2: p.items {
-            //         p.items - i + i2 = p.items'
-            //         i not in p.items'
-            //         i in Mushroom => {
-            //             p.position' = moveTo.next.next.next
-            //         } 
-            //         i in FireFlower => {
-            //             some p2 : Player {
-            //                 p2.position' = p2.position'.back.back.back
-            //             }
-            //         }
-            //     }
-                    
-            // } --else {
-                // some i : Item | {
-                //     i not in p.items
-                //     p.items' = p.items + i
-                // }
-            --}
         }
 
         
@@ -202,42 +189,22 @@ pred move[p: Player, r: Int] {
 }
 
 pred game_turn {
-    // all disj p1, p2, p3, p4: Player | {
-    //     move[p1, 1] or move[p1, 2] or move[p1, 3] or move[p1, 4] or move[p1, 5] or move[p1, 6]
-    //     move[p2, 1] or move[p2, 2] or move[p2, 3] or move[p2, 4] or move[p2, 5] or move[p2, 6]
-    //     move[p3, 1] or move[p3, 2] or move[p3, 3] or move[p3, 4] or move[p3, 5] or move[p3, 6]
-    //     move[p4, 1] or move[p4, 2] or move[p4, 3] or move[p4, 4] or move[p4, 5] or move[p4, 6]
-    // }
 
     all p: Player | {
-
         move[p, 1] or move[p, 2] or move[p, 3] or move[p, 4] or move[p, 5] or move[p, 6]
-        
-        // minigame[p]
-        // p.coins' = add[p.coins, 2] or p.coins' = add[p.coins, 1] or p.coins' = p.coin
+        minigame[p]
     }
-        // p.items' = p.items
 }
 
-    // one p: Player | {
-    //     p.coins' = add[p.coins, 2]
-    // }
-   
-
 pred minigame[p: Player] {
-    // all disj p1, p2, p3, p4: Player | {
-    //     p1.coins' = add[p1.coins, 2]
-    //     p2.coins' = add[p2.coins, 1]
-    //     p3.coins' = add[p3.coins, 0]
-    //     p4.coins' = add[p4.coins, 0]
-    // }
-    // all disj p1, p2, p3, p4: Player | {
-    //     p1.coins' = add[p1.coins, 2]
-    //     p2.coins' = add[p2.coins, 1]
-    //     p3.coins' = p3.coins
-    //     p4.coins' = p4.coins
-    // }
     p.coins' = add[p.coins, 2] or p.coins' = add[p.coins, 1]
+}
+
+pred starMove{
+    one moveTo: Tile| {
+        moveTo != Star.tile
+        moveTo = Star.tile'
+    }
 }
 
 pred final {
