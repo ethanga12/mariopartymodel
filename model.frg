@@ -1,11 +1,13 @@
-#lang forge/temporal
+#lang forge
+
+option problem_type temporal
 // option min_tracelength = 15
 
 sig Tile {
-	next: one Tile,
-    back: one Tile, //are we gonna do this 
-    index: one Int,
-    color: one Color
+	var next: one Tile,
+    var back: one Tile, //are we gonna do this 
+    var index: one Int,
+    var color: one Color
 }
 
 sig Color {}
@@ -14,7 +16,7 @@ sig Red extends Color {}
 sig Blue extends Color {}
 sig Green extends Color {}
 
-one sig Root extends Tile {}
+// one sig Root extends Tile {}
 
 
 sig Board { //Board sig
@@ -35,7 +37,9 @@ sig Board { //Board sig
 
 pred wellformed[b: Board] {
 	-- all nodes are reachable from the root
+    
     all t : b.board | {
+        lone t : b.board | t.index = 0
         (#{r : t.color | r in Red} = 8)
         (#{g : t.color | g in Green } = 5)
         (#{b : t.color | b in Blue } = subtract[#{b.board}, 13])
@@ -43,23 +47,28 @@ pred wellformed[b: Board] {
         // (#{b : t.color | b in Blue } = 3)
         t.next != t
         t.back != t
-        t.back.next = t
-        t.next.back = t
+        // t.back.next = t
+        // t.next.back = t
+        // t.next.index = 
+        t.index != 0 implies t.index = add[t.back.index, 1] 
     }
+    all disj t1, t2 : b.board | {
+        t1.index != t2.index
+        // t1.next = t2 implies {t2.index = add[t1.index, 1]}
+    }
+    // one t : b.board | t = Root
 
     // all disj tile, nextTile, notNextTile : b.board | {
     //     nextTile = tile.next
     // }
 
-    Root->(b.board - Root) in ^next
+    // Root->(b.board - Root) in ^next
 	
-    Root.index = 0
-    all t : b.board | {
-        
-        t.next != Root implies t.next.index = add[t.index, 1]
-        t.next = Root implies t.next.index = 0
-    }
-    
+    // Root.index = 0
+    // all t : b.board | {
+    //     t.next != Root implies t.next.index = add[t.index, 1]
+    //     t.next = Root implies t.next.index = 0
+    // }
 }
 
 // abstract sig Pointer { // look at this later
@@ -71,10 +80,10 @@ pred wellformed[b: Board] {
 // sig Green extends Tile {}
 
 abstract sig Player {
-    coins: one Int,
-    position: one Tile,
-    stars: set Star, 
-    items: set Item
+    var coins: one Int,
+    var position: one Tile,
+    var stars: set Star, 
+    var items: set Item
 }
 
 abstract sig Item {
@@ -95,7 +104,7 @@ pred init {
     all p: Player | p.coins = 10
     all p: Player | no p.stars
     all p: Player | no p.items
-    all p: Player | p.position = Root
+    all p: Player | p.position.index = 0 
 
     all b: Board | wellformed[b]
 }
@@ -129,6 +138,7 @@ pred final {
 }
 
 pred trace_base {
+    always wellformedall
     init
     some p: Player | eventually move[p, 1]
     // eventually final
