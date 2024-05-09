@@ -94,7 +94,7 @@ pred move[p: Player, r: Int] {
                 -- get the last index of the board, subtract from the current index, and add to r to get the new index
                 moveTo.index = add[subtract[current.index, #{Tile}], r]
             }
-            p.position' = moveTo
+            // p.position' = moveTo
             
         }
 
@@ -114,8 +114,14 @@ pred move[p: Player, r: Int] {
                         }
                     }
                 }
+                some tileAfterItem : Tile | {
+                    tileAfterItem.index = add[moveTo.index, 3]
+                }
+
+                p.position' = tileAfterItem
             }} or {
                 p.items' = p.items
+                p.position' = moveTo
             }
         }
         moveTo.color = Red => {
@@ -136,6 +142,7 @@ pred move[p: Player, r: Int] {
                 }
             }} or {
                 p.items' = p.items
+                p.position' = moveTo
             }
         }
         moveTo.color = Green => {
@@ -143,6 +150,7 @@ pred move[p: Player, r: Int] {
             // item in Mushroom or item in FireFlower
             // item not in p.items
             p.items' = p.items + item
+            p.position' = moveTo
             // #{p.items'} != add[#{p.items}, 1] and {
             //     some i, i2: p.items {
             //         p.items - i + i2 = p.items'
