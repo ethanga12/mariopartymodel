@@ -102,23 +102,32 @@ pred move[p: Player, r: Int] {
             p.coins' = add[p.coins, 1]
             // p.items' = p.items
             {#{p.items'} <  #{p.items} and {
-                some i : p.items | {
+                one i : p.items | {
                     p.items - i = p.items'
-                    i not in p.items'
+                    // i not in p.items'
                     i in Mushroom => {
-                        p.position' = moveTo.next.next.next
-                    } 
-                    i in FireFlower => {
-                        some p2 : Player {
-                            p2.position'' = p2.position'.back.back.back
-                        }
-                    }
-                }
-                some tileAfterItem : Tile | {
-                    tileAfterItem.index = add[moveTo.index, 3]
-                }
+                        // p.position' = moveTo.next.next.next
 
-                p.position' = tileAfterItem
+                        one tileAfterItem : Tile | {
+                            -- now create a new tile that includes the effects of the item
+                            tileAfterItem.index = add[moveTo.index, 3]
+
+                            -- move to that tile instead of the original moveTo
+                            p.position' = tileAfterItem
+                        }
+                    } else {
+                        p.position' = moveTo
+                    }
+                    // i in FireFlower => {
+                    //     some p2 : Player {
+                    //         p2.position'' = p2.position'.back.back.back
+                    //     }
+                    // }
+
+                    /** IMPORTANT: fireflower is currently not actually implemented. the item is supposed to move a random
+                    player three tiles back on their next move, but forge's model of constraints instead of variable assignments
+                    makes this potentially impossible. **/
+                }
             }} or {
                 p.items' = p.items
                 p.position' = moveTo
@@ -128,18 +137,33 @@ pred move[p: Player, r: Int] {
             p.coins' = subtract[p.coins, 1]
             // p.items' = p.items
             {#{p.items'} < #{p.items} and {
-                some i : p.items | {
+                one i : p.items | {
                     p.items - i = p.items'
-                    i not in p.items'
+                    // i not in p.items'
                     i in Mushroom => {
-                        p.position' = moveTo.next.next.next
-                    }
-                    i in FireFlower => {
-                        some p2 : Player {
-                            p2.position''= p2.position'.back.back.back
+                        // p.position' = moveTo.next.next.next
+
+                        one tileAfterItem : Tile | {
+                            -- now create a new tile that includes the effects of the item
+                            tileAfterItem.index = add[moveTo.index, 3]
+
+                            -- move to that tile instead of the original moveTo
+                            p.position' = tileAfterItem
                         }
+                    } else {
+                        p.position' = moveTo
                     }
+                    // i in FireFlower => {
+                    //     some p2 : Player {
+                    //         p2.position''= p2.position'.back.back.back
+                    //     }
+                    // }
+
+                    /** IMPORTANT: fireflower is currently not actually implemented. the item is supposed to move a random
+                    player three tiles back on their next move, but forge's model of constraints instead of variable assignments
+                    makes this potentially impossible. **/
                 }
+
             }} or {
                 p.items' = p.items
                 p.position' = moveTo
