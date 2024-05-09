@@ -1,7 +1,9 @@
-#lang forge
+#lang forge/temporal
 
-option problem_type temporal
-// option min_tracelength = 15
+// option problem_type temporal
+option max_tracelength 5
+option min_tracelength 5
+option solver Glucose
 
 sig Tile {
 	next: one Tile,
@@ -12,9 +14,9 @@ sig Tile {
 
 abstract sig Color {}
 
-sig Red extends Color {}
-sig Blue extends Color {}
-sig Green extends Color {}
+one sig Red extends Color {}
+one sig Blue extends Color {}
+one sig Green extends Color {}
 
 // one sig Root extends Tile {}
 
@@ -22,17 +24,6 @@ sig Green extends Color {}
 sig Board { //Board sig
     board: set Tile
 }
-
-// pred wellformed[b: Board] { //Tests that the board is wellformed
-//     all row, col: Int | {
-//         (row < 0 or row > 6 or col < 0 or col > 7) implies 
-//             no b.board[row][col]
-//         ((b.board[row][col] = R or b.board[row][col] = Y) and row >= 1) implies { //inductive falling
-//             b.board[subtract[row, 1]][col] = R or b.board[subtract[row, 1]][col] = Y
-//         }
-//     }
-//     #{row, col: Int | b.board[row][col] = R} >= #{row, col: Int | b.board[row][col] = Y} and #{row, col: Int | b.board[row][col] = R} < add[#{row, col: Int | b.board[row][col] = Y}, 2] //R moves first
-// }
 
 
 pred wellformed[b: Board] {
@@ -52,53 +43,14 @@ pred wellformed[b: Board] {
             t1.back != t2.back
             t1.next = t2 implies {{t2.index = add[t1.index, 1]} and {t1.index = subtract[t2.index, 1]}} or t2.index = 0 
         }
+        
 
     }
+    (#{r : b.board | r.color = Red} = 1) // 2
+    (#{g : b.board | g.color = Green } = 1) // 1
+    (#{bl : b.board | bl.color = Blue } = 2) // 5
     one t : b.board | t.index = 0
-    // all t : b.board | {
-    //     // one t : b.board | {t.index = 0 and t.next.index = 1}
-    //     // (#{r : t.color | r in Red} = 8)
-    //     // (#{g : t.color | g in Green } = 5)
-    //     // (#{b : t.color | b in Blue } = subtract[#{b.board}, 13])
-    //     // // Root->(t - Root) in ^next
-    //     // // (#{b : t.color | b in Blue } = 3)
-    //     t.next != t
-    //     t.back != t
-    //     // // t.back.next = t
-    //     // // t.next.back = t
-    //     // // t.next.index = 
-        
-    //     t.index != 0 implies {
-    //         t.index = add[t.back.index, 1] 
-    //         t.index = subtract[t.next.index, 1]
-    //         t.index > 0
-    //     }
-    //     t.index >= 0
-    
-    // }
-    
-    // one t : b.board | t = Root
-
-    // all disj tile, nextTile, notNextTile : b.board | {
-    //     nextTile = tile.next
-    // }
-
-    // Root->(b.board - Root) in ^next
-	
-    // Root.index = 0
-    // all t : b.board | {
-    //     t.next != Root implies t.next.index = add[t.index, 1]
-    //     t.next = Root implies t.next.index = 0
-    // }
 }
-
-// abstract sig Pointer { // look at this later
-// 	var position: lone Node
-// }
-
-// sig Red extends Tile {}
-// sig Blue extends Tile {}
-// sig Green extends Tile {}
 
 abstract sig Player {
     var coins: one Int,
@@ -116,42 +68,144 @@ sig Star extends Item {
     tile: one Int
 } //not sure if this is the best way to do this
 
-sig Mario extends Player {}
-sig Luigi extends Player {}
-sig Toad extends Player {}
-sig Yoshi extends Player {}
+one sig Mario extends Player {}
+one sig Luigi extends Player {}
+one sig Toad extends Player {}
+one sig Yoshi extends Player {}
 
 pred init {
-    all p: Player | p.coins = 10
-    all p: Player | no p.stars
-    all p: Player | no p.items
-    all p: Player | p.position.index = 0 
+    all p: Player | p.coins = 5
+    all p: Player | #{p.items} = 1
+    all p: Player | #{p.stars} = 0
+    all p: Player | p.position.index = 0
 
     all b: Board | wellformed[b]
 }
 
 pred move[p: Player, r: Int] {
-    // one next: Tile, current: Tile | {
-    //     p.position = current
-    //     next.index = add[current.index, r]
-    //     p.position' = next
+    one moveTo: Tile, current: Tile | some item: Item | {
+        // item not in p.items
+        p.position = current
+        some t : Tile | one root : Tile | {
+            root.index = 0
+            add[current.index, r] <= subtract[#{Tile}, 1] => {
+                moveTo.index = add[current.index, r]
+            } else {
+                -- get the last index of the board, subtract from the current index, and add to r to get the new index
+                moveTo.index = add[subtract[current.index, #{Tile}], r]
+            }
+            p.position' = moveTo
+            
+        }
+
+        moveTo.color = Blue => {
+            p.coins' = add[p.coins, 1]
+            // p.items' = p.items
+            {#{p.items'} <  #{p.items} and {
+                some i : p.items | {
+                    p.items - i = p.items'
+                    i not in p.items'
+                    i in Mushroom => {
+                        p.position' = moveTo.next.next.next
+                    } 
+                    i in FireFlower => {
+                        some p2 : Player {
+                            p2.position'' = p2.position'.back.back.back
+                        }
+                    }
+                }
+            }} or {
+                p.items' = p.items
+            }
+        }
+        moveTo.color = Red => {
+            p.coins' = subtract[p.coins, 1]
+            // p.items' = p.items
+            {#{p.items'} < #{p.items} and {
+                some i : p.items | {
+                    p.items - i = p.items'
+                    i not in p.items'
+                    i in Mushroom => {
+                        p.position' = moveTo.next.next.next
+                    }
+                    i in FireFlower => {
+                        some p2 : Player {
+                            p2.position''= p2.position'.back.back.back
+                        }
+                    }
+                }
+            }} or {
+                p.items' = p.items
+            }
+        }
+        moveTo.color = Green => {
+            p.coins' = p.coins
+            // item in Mushroom or item in FireFlower
+            // item not in p.items
+            p.items' = p.items + item
+            // #{p.items'} != add[#{p.items}, 1] and {
+            //     some i, i2: p.items {
+            //         p.items - i + i2 = p.items'
+            //         i not in p.items'
+            //         i in Mushroom => {
+            //             p.position' = moveTo.next.next.next
+            //         } 
+            //         i in FireFlower => {
+            //             some p2 : Player {
+            //                 p2.position' = p2.position'.back.back.back
+            //             }
+            //         }
+            //     }
+                    
+            // } --else {
+                // some i : Item | {
+                //     i not in p.items
+                //     p.items' = p.items + i
+                // }
+            --}
+        }
+
+        
+    }
+}
+
+pred game_turn {
+    // all disj p1, p2, p3, p4: Player | {
+    //     move[p1, 1] or move[p1, 2] or move[p1, 3] or move[p1, 4] or move[p1, 5] or move[p1, 6]
+    //     move[p2, 1] or move[p2, 2] or move[p2, 3] or move[p2, 4] or move[p2, 5] or move[p2, 6]
+    //     move[p3, 1] or move[p3, 2] or move[p3, 3] or move[p3, 4] or move[p3, 5] or move[p3, 6]
+    //     move[p4, 1] or move[p4, 2] or move[p4, 3] or move[p4, 4] or move[p4, 5] or move[p4, 6]
     // }
 
-    p.position' = p.position.next
+    all p: Player | {
 
-    // p.position.index' = add[p.position.index, r]
-    // p.position.color' = Red => p.coins' = subtract[p.coins, 3]
-    // p.position.color' = Blue => p.coins' = add[p.coins, 3]
-    // p.position.color' = Green => {
-    //     {{p.coins' = p.coins + 5} and not {p.coins' = p.coins - 5} and not {p.items' = p.items + Mushroom}} or 
-    //     {not {p.coins' = p.coins + 5} and {p.coins' = p.coins - 5} and not {p.items' = p.items + Mushroom}} or 
-    //     {not {p.coins' = p.coins + 5} and not {p.coins' = p.coins - 5} and {p.items' = p.items + Mushroom}}
+        move[p, 1] or move[p, 2] or move[p, 3] or move[p, 4] or move[p, 5] or move[p, 6]
+        
+        // minigame[p]
+        // p.coins' = add[p.coins, 2] or p.coins' = add[p.coins, 1] or p.coins' = p.coin
+    }
+        // p.items' = p.items
+}
+
+    // one p: Player | {
+    //     p.coins' = add[p.coins, 2]
     // }
-    // {#{p.stars'} = add[#{p.stars}, 1]} => {
-    //     some s: Star | p.position.index = s.tile
-    //     p.coins >= 25
-    //     p.coins' = p.coins - 25
+   
+
+pred minigame[p: Player] {
+    // all disj p1, p2, p3, p4: Player | {
+    //     p1.coins' = add[p1.coins, 2]
+    //     p2.coins' = add[p2.coins, 1]
+    //     p3.coins' = add[p3.coins, 0]
+    //     p4.coins' = add[p4.coins, 0]
     // }
+    // all disj p1, p2, p3, p4: Player | {
+    //     p1.coins' = add[p1.coins, 2]
+    //     p2.coins' = add[p2.coins, 1]
+    //     p3.coins' = p3.coins
+    //     p4.coins' = p4.coins
+    // }
+    p.coins' = add[p.coins, 2] or p.coins' = add[p.coins, 1]
 }
 
 pred final {
@@ -159,15 +213,21 @@ pred final {
 }
 
 pred trace_base {
-    wellformedall
-    // init
-    // some p: Player | eventually move[p, 1]
-    // eventually final
+    init
+    // always wellformedall
+    // always game_turn
+    // always game_turn
+    always { 
+        game_turn
+    }
+        
+    // p.stars' = p.stars
+    // next_state move[Mario, 3]
 }
 
 pred wellformedall {
     all b: Board | wellformed[b]
 }
 
-run { trace_base } for exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 6 Tile, 1 Red, 1 Blue, 1 Green
+run { trace_base } for exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 4 Tile, 1 Green, 1 Red, 2 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, 40 Item
 // run { wellformedall } for 7 Int, exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 16 Tile
