@@ -19,9 +19,9 @@ one sig Blue extends Color {}
 one sig Green extends Color {}
 
 abstract sig Item {}
-sig Mushroom extends Item {} //sends them forward 3
-sig FireFlower extends Item {} //Sends them back 3
-sig GenieLamp extends Item {} //Sends them to the current location of the star
+one sig Mushroom extends Item {} //sends them forward 3
+one sig FireFlower extends Item {} //Sends them back 3
+one sig GenieLamp extends Item {} //Sends them to the current location of the star
 // sig Star extends Item {
 //     var tile: one Int
 // } //not sure if this is the best way to do this
@@ -34,7 +34,8 @@ abstract sig Player {
     var position: one Tile,
     // var stars: set Star,
     var stars: one Int,
-    var items: set Item
+    // var items: set Item
+    var items: func Item -> Int
 }
 
 one sig Mario extends Player {}
@@ -80,7 +81,12 @@ pred wellformed[b: Board] {
 
 pred init {
     all p: Player | p.coins = 5
-    all p: Player | #{p.items} = 1
+    // all p: Player | #{p.items} = 1
+    all p : Player | {
+        p.items[Mushroom] = 0
+        p.items[FireFlower] = 0
+        p.items[GenieLamp] = 0
+    }
     all p: Player | p.stars = 0
     all p: Player | p.position.index = 0
 
@@ -88,7 +94,7 @@ pred init {
 }
 
 pred move[p: Player, r: Int] {
-    one moveTo: Tile, current: Tile | some item: Item | {
+    one moveTo: Tile, current: Tile | {
         // item not in p.items
         p.position = current
         some t : Tile | one root : Tile | {
@@ -104,11 +110,12 @@ pred move[p: Player, r: Int] {
 
         moveTo.color = Blue => {
             p.coins' = add[p.coins, 1]
-            // p.items' = p.items
-            {#{p.items'} <  #{p.items} and {
-                one i : p.items | {
-                    p.items - i = p.items'
-                    // i not in p.items'
+            {
+                one i : Item | all other : Item | {
+                    i != other => p.items'[other] = p.items[other] 
+                    -- ensure that player has at least one of the item and then remove one from their inventory
+                    p.items[i] > 0
+                    subtract[p.items[i], 1] = p.items'[i]
                     i in Mushroom => {
                         one tileAfterItem : Tile | {
                             -- now create a new tile that includes the effects of the item
@@ -137,32 +144,21 @@ pred move[p: Player, r: Int] {
                             p.stars' = p.stars
                         }
                     }
-
-                    // i in FireFlower => {
-                    //     some p2 : Player {
-                    //         p2.position'' = p2.position'.back.back.back
-                    //     }
-                    // }
-
-                    /** IMPORTANT: fireflower is currently not actually implemented. the item is supposed to move a random
-                    player three tiles back on their next move, but forge's model of constraints instead of variable assignments
-                    makes this potentially impossible. **/
                 }
-            }} or {
+            } or {
                 p.items' = p.items
                 p.position' = moveTo
             }
         }
         moveTo.color = Red => {
             p.coins' = subtract[p.coins, 1]
-            // p.items' = p.items
-            {#{p.items'} < #{p.items} and {
-                one i : p.items | {
-                    p.items - i = p.items'
-                    // i not in p.items'
+            {
+                one i : Item | all other : Item | {
+                    i != other => p.items'[other] = p.items[other]
+                    -- ensure that player has at least one of the item and then remove one from their inventory
+                    p.items[i] > 0
+                    p.items'[i] = subtract[p.items[i], 1]
                     i in Mushroom => {
-                        // p.position' = moveTo.next.next.next
-
                         one tileAfterItem : Tile | {
                             -- now create a new tile that includes the effects of the item
                             tileAfterItem.index = add[moveTo.index, 3]
@@ -177,7 +173,8 @@ pred move[p: Player, r: Int] {
                         // starMove
                     }
                     i in FireFlower => {
-                        p.position' = moveTo.back.back
+                        // p.position' = moveTo.back.back
+                        p.position' = moveTo
                     }
 
                     -- check if player passed the star when getting to new position
@@ -190,30 +187,21 @@ pred move[p: Player, r: Int] {
                             p.stars' = p.stars
                         }
                     }
-                    
-                    // i in FireFlower => {
-                    //     some p2 : Player {
-                    //         p2.position''= p2.position'.back.back.back
-                    //     }
-                    // }
-
-                    /** IMPORTANT: fireflower is currently not actually implemented. the item is supposed to move a random
-                    player three tiles back on their next move, but forge's model of constraints instead of variable assignments
-                    makes this potentially impossible. **/
                 }
 
-            }} or {
+            } or {
                 p.items' = p.items
                 p.position' = moveTo
             }
         }
         moveTo.color = Green => {
             p.coins' = p.coins
-            p.items' = p.items + item
+            one i : Item | all other: Item | {
+                i != other => p.items'[other] = p.items[other]
+                p.items'[i] = add[p.items[i], 1]
+            }
             p.position' = moveTo
         }
-
-        
     }
 }
 
@@ -261,6 +249,7 @@ pred wellformedall {
     all b: Board | wellformed[b]
 }
 
-run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
+// run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
+run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color
 // run { trace_base } for exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
 // run { wellformedall } for 7 Int, exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 16 Tile
