@@ -18,7 +18,29 @@ one sig Red extends Color {}
 one sig Blue extends Color {}
 one sig Green extends Color {}
 
-// one sig Root extends Tile {}
+abstract sig Item {}
+sig Mushroom extends Item {} //sends them forward 3
+sig FireFlower extends Item {} //Sends them back 3
+sig GenieLamp extends Item {} //Sends them to the current location of the star
+// sig Star extends Item {
+//     var tile: one Int
+// } //not sure if this is the best way to do this
+
+one sig Star {
+    var tile: one Tile    
+}
+abstract sig Player {
+    var coins: one Int,
+    var position: one Tile,
+    // var stars: set Star,
+    var stars: one Int,
+    var items: set Item
+}
+
+one sig Mario extends Player {}
+one sig Luigi extends Player {}
+one sig Toad extends Player {}
+one sig Yoshi extends Player {}
 
 
 sig Board { //Board sig
@@ -44,43 +66,22 @@ pred wellformed[b: Board] {
             t1.next = t2 implies {{t2.index = add[t1.index, 1]} and {t1.index = subtract[t2.index, 1]}} or t2.index = 0 
         }
     }
-    (#{r : b.board | r.color = Red} = 1) // 2
+    (#{r : b.board | r.color = Red} = 2) // 2
     (#{g : b.board | g.color = Green } = 1) // 1
-    (#{bl : b.board | bl.color = Blue } = 2) // 5
+    (#{bl : b.board | bl.color = Blue } = 5) // 5
     one t : b.board | t.index = 0
 
-    Star.tile in b.board and Star.tile.index > 2
+    // Star.tile in b.board and Star.tile.index > 2
 }
 
-abstract sig Player {
-    var coins: one Int,
-    var position: one Tile,
-    // var stars: set Star,
-    var stars: one Int,
-    var items: set Item
-}
 
-abstract sig Item {}
-sig Mushroom extends Item {} //sends them forward 3
-sig FireFlower extends Item {} //Sends them back 3
-sig GenieLamp extends Item {} //Sends them to the current location of the star
-// sig Star extends Item {
-//     var tile: one Int
-// } //not sure if this is the best way to do this
 
-one sig Star {
-    var tile: one Tile
-}
 
-one sig Mario extends Player {}
-one sig Luigi extends Player {}
-one sig Toad extends Player {}
-one sig Yoshi extends Player {}
 
 pred init {
     all p: Player | p.coins = 5
     all p: Player | #{p.items} = 1
-    all p: Player | #{p.stars} = 0
+    all p: Player | p.stars = 0
     all p: Player | p.position.index = 0
 
     all b: Board | wellformed[b]
@@ -109,8 +110,6 @@ pred move[p: Player, r: Int] {
                     p.items - i = p.items'
                     // i not in p.items'
                     i in Mushroom => {
-                        // p.position' = moveTo.next.next.next
-
                         one tileAfterItem : Tile | {
                             -- now create a new tile that includes the effects of the item
                             tileAfterItem.index = add[moveTo.index, 3]
@@ -118,9 +117,27 @@ pred move[p: Player, r: Int] {
                             -- move to that tile instead of the original moveTo
                             p.position' = tileAfterItem
                         }
-                    } else {
+                    }
+                    i in GenieLamp => {
+                        p.position' = Star.tile
+                        // p.stars' = add[p.stars, 1]
+                        // starMove
+                    }
+                    i in FireFlower => {
                         p.position' = moveTo
                     }
+
+                    -- check if player passed the star when getting to new position
+                    some tilesToStar : Int | {
+                        { tilesToStar <= r and tilesToStar >= 0 } => {
+                            add[p.position.index, tilesToStar] = Star.tile.index
+                            p.stars' = add[p.stars, 1]
+                            starMove
+                        } else {
+                            p.stars' = p.stars
+                        }
+                    }
+
                     // i in FireFlower => {
                     //     some p2 : Player {
                     //         p2.position'' = p2.position'.back.back.back
@@ -156,12 +173,24 @@ pred move[p: Player, r: Int] {
                     }
                     i in GenieLamp => {
                         p.position' = Star.tile
-                        p.stars' = add[p.stars, 1]
-                        starMove
+                        // p.stars' = add[p.stars, 1]
+                        // starMove
                     }
                     i in FireFlower => {
-                        p.position' = moveTo
+                        p.position' = moveTo.back.back
                     }
+
+                    -- check if player passed the star when getting to new position
+                    some tilesToStar : Int | {
+                        { tilesToStar <= r and tilesToStar >= 0 } => {
+                            add[p.position.index, tilesToStar] = Star.tile.index
+                            p.stars' = add[p.stars, 1]
+                            starMove
+                        } else {
+                            p.stars' = p.stars
+                        }
+                    }
+                    
                     // i in FireFlower => {
                     //     some p2 : Player {
                     //         p2.position''= p2.position'.back.back.back
@@ -192,12 +221,12 @@ pred game_turn {
 
     all p: Player | {
         move[p, 1] or move[p, 2] or move[p, 3] or move[p, 4] or move[p, 5] or move[p, 6]
-        minigame[p]
+        // minigame[p]
     }
 }
 
 pred minigame[p: Player] {
-    p.coins' = add[p.coins, 2] or p.coins' = add[p.coins, 1]
+    p.coins' = add[p.coins, 2] or p.coins' = add[p.coins, 1] or p.coins' = p.coins
 }
 
 pred starMove{
@@ -205,6 +234,10 @@ pred starMove{
         moveTo != Star.tile
         moveTo = Star.tile'
     }
+}
+
+pred starStay{
+    Star.tile = Star.tile'
 }
 
 pred final {
@@ -228,5 +261,6 @@ pred wellformedall {
     all b: Board | wellformed[b]
 }
 
-run { trace_base } for exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 4 Tile, 1 Green, 1 Red, 2 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, 40 Item
+run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
+// run { trace_base } for exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
 // run { wellformedall } for 7 Int, exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 16 Tile
