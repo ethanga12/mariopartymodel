@@ -1,8 +1,8 @@
 #lang forge/temporal
 
 // option problem_type temporal
-option max_tracelength 5
-option min_tracelength 5
+option max_tracelength 20
+option min_tracelength 20
 option solver Glucose
 
 sig Tile {
@@ -22,19 +22,15 @@ abstract sig Item {}
 one sig Mushroom extends Item {} //sends them forward 3
 one sig FireFlower extends Item {} //Sends them back 3
 one sig GenieLamp extends Item {} //Sends them to the current location of the star
-// sig Star extends Item {
-//     var tile: one Int
-// } //not sure if this is the best way to do this
 
 one sig Star {
-    var tile: one Tile    
+    var tile: one Tile,
+    var price: one Int
 }
 abstract sig Player {
     var coins: one Int,
     var position: one Tile,
-    // var stars: set Star,
     var stars: one Int,
-    // var items: set Item
     var items: func Item -> Int
 }
 
@@ -45,9 +41,9 @@ one sig Yoshi extends Player {}
 
 
 sig Board { //Board sig
-    board: set Tile
+    board: set Tile,
+    var playersMoved: set Player
 }
-
 
 pred wellformed[b: Board] {
 	-- all nodes are reachable from the root
@@ -56,8 +52,7 @@ pred wellformed[b: Board] {
         t.next != t
         t.back != t
         t.index != 0 implies {
-            t.index = add[t.back.index, 1] 
-            // t.index = subtract[t.next.index, 1]
+            t.index = add[t.back.index, 1]
             t.index > 0
         }
         all disj t1, t2 : Tile | {
@@ -73,11 +68,9 @@ pred wellformed[b: Board] {
     one t : b.board | t.index = 0
 
     // Star.tile in b.board and Star.tile.index > 2
+
+    b.playersMoved = none
 }
-
-
-
-
 
 pred init {
     all p: Player | p.coins = 5
@@ -89,6 +82,7 @@ pred init {
     }
     all p: Player | p.stars = 0
     all p: Player | p.position.index = 0
+    Star.price = 5
 
     all b: Board | wellformed[b]
 }
@@ -110,90 +104,20 @@ pred move[p: Player, r: Int] {
 
         moveTo.color = Blue => {
             p.coins' = add[p.coins, 1]
-            {
-                one i : Item | all other : Item | {
-                    i != other => p.items'[other] = p.items[other] 
-                    -- ensure that player has at least one of the item and then remove one from their inventory
-                    p.items[i] > 0
-                    subtract[p.items[i], 1] = p.items'[i]
-                    i in Mushroom => {
-                        one tileAfterItem : Tile | {
-                            -- now create a new tile that includes the effects of the item
-                            tileAfterItem.index = add[moveTo.index, 3]
-
-                            -- move to that tile instead of the original moveTo
-                            p.position' = tileAfterItem
-                        }
-                    }
-                    i in GenieLamp => {
-                        p.position' = Star.tile
-                        // p.stars' = add[p.stars, 1]
-                        // starMove
-                    }
-                    i in FireFlower => {
-                        p.position' = moveTo
-                    }
-
-                    -- check if player passed the star when getting to new position
-                    some tilesToStar : Int | {
-                        { tilesToStar <= r and tilesToStar >= 0 } => {
-                            add[p.position.index, tilesToStar] = Star.tile.index
-                            p.stars' = add[p.stars, 1]
-                            starMove
-                        } else {
-                            p.stars' = p.stars
-                        }
-                    }
-                }
-            } or {
+            useItem[p, moveTo] or {
                 p.items' = p.items
                 p.position' = moveTo
             }
         }
+
         moveTo.color = Red => {
             p.coins' = subtract[p.coins, 1]
-            {
-                one i : Item | all other : Item | {
-                    i != other => p.items'[other] = p.items[other]
-                    -- ensure that player has at least one of the item and then remove one from their inventory
-                    p.items[i] > 0
-                    p.items'[i] = subtract[p.items[i], 1]
-                    i in Mushroom => {
-                        one tileAfterItem : Tile | {
-                            -- now create a new tile that includes the effects of the item
-                            tileAfterItem.index = add[moveTo.index, 3]
-
-                            -- move to that tile instead of the original moveTo
-                            p.position' = tileAfterItem
-                        }
-                    }
-                    i in GenieLamp => {
-                        p.position' = Star.tile
-                        // p.stars' = add[p.stars, 1]
-                        // starMove
-                    }
-                    i in FireFlower => {
-                        // p.position' = moveTo.back.back
-                        p.position' = moveTo
-                    }
-
-                    -- check if player passed the star when getting to new position
-                    some tilesToStar : Int | {
-                        { tilesToStar <= r and tilesToStar >= 0 } => {
-                            add[p.position.index, tilesToStar] = Star.tile.index
-                            p.stars' = add[p.stars, 1]
-                            starMove
-                        } else {
-                            p.stars' = p.stars
-                        }
-                    }
-                }
-
-            } or {
+            useItem[p, moveTo] or {
                 p.items' = p.items
                 p.position' = moveTo
             }
         }
+
         moveTo.color = Green => {
             p.coins' = p.coins
             one i : Item | all other: Item | {
@@ -202,30 +126,101 @@ pred move[p: Player, r: Int] {
             }
             p.position' = moveTo
         }
+
+        -- check if player passed the star when getting to new position
+        some tilesToStar : Int | {
+            { tilesToStar <= r and tilesToStar >= 0 } => {
+                add[p.position.index, tilesToStar] = Star.tile.index
+                p.coins >= Star.price => {
+                    p.stars' = add[p.stars, 1]
+                    // p.coins' = subtract[p.coins, Star.price]
+                } else {
+                    p.stars' = p.stars
+                    // p.coins' = p.coins
+                }
+                starMove
+            } else {
+                p.stars' = p.stars
+                starStay
+            }
+        }
     }
+}
+
+pred useItem[p: Player, moveTo: Tile] {
+    one i : Item | all other : Item | {
+        i != other => p.items'[other] = p.items[other]
+        -- ensure that player has at least one of the item and then remove one from their inventory
+        p.items[i] > 0
+        p.items'[i] = subtract[p.items[i], 1]
+        i in Mushroom => {
+            one tileAfterItem : Tile | {
+                -- now create a new tile that includes the effects of the item
+                tileAfterItem.index = add[moveTo.index, 3]
+
+                -- move to that tile instead of the original moveTo
+                p.position' = tileAfterItem
+            }
+        }
+        i in GenieLamp => {
+            p.position' = Star.tile
+        }
+        i in FireFlower => {
+            p.position' = moveTo
+        }
+    }
+}
+
+pred stayPut[p: Player] {
+    p.coins' = p.coins
+    p.items' = p.items
+    p.stars' = p.stars
+    p.position' = p.position
+}
+
+pred move_player_turn[p: Player] {
+    move[p, 1] or move[p, 2] or move[p, 3] or move[p, 4] or move[p, 5] or move[p, 6]
 }
 
 pred game_turn {
+    one b: Board | {
+        #{b.playersMoved} = 4 => {
+            b.playersMoved' = none
+            minigame
+        } else {
+            one p : Player - b.playersMoved | {
+                move_player_turn[p]
+                all otherP : Player - p | {
+                    stayPut[otherP]
+                }
+                b.playersMoved' = b.playersMoved + p
+            }
+        }
 
-    all p: Player | {
-        move[p, 1] or move[p, 2] or move[p, 3] or move[p, 4] or move[p, 5] or move[p, 6]
-        // minigame[p]
     }
 }
 
-pred minigame[p: Player] {
-    p.coins' = add[p.coins, 2] or p.coins' = add[p.coins, 1] or p.coins' = p.coins
+pred minigame {
+    starStay
+    all p: Player | {
+        p.items' = p.items
+        p.stars' = p.stars
+        p.position' = p.position
+
+        p.coins' = add[p.coins, 2] or p.coins' = add[p.coins, 1] or p.coins' = p.coins
+    }
 }
 
 pred starMove{
-    one moveTo: Tile| {
+    one moveTo: Tile | {
         moveTo != Star.tile
         moveTo = Star.tile'
     }
 }
 
 pred starStay{
-    Star.tile = Star.tile'
+    Star.tile' = Star.tile
+    Star.price' = Star.price
 }
 
 pred final {
@@ -234,15 +229,7 @@ pred final {
 
 pred trace_base {
     init
-    // always wellformedall
-    // always game_turn
-    // always game_turn
-    always { 
-        game_turn
-    }
-        
-    // p.stars' = p.stars
-    // next_state move[Mario, 3]
+    always game_turn
 }
 
 pred wellformedall {
@@ -250,6 +237,6 @@ pred wellformedall {
 }
 
 // run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
-run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color
+run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 5 Int
 // run { trace_base } for exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
 // run { wellformedall } for 7 Int, exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 16 Tile
