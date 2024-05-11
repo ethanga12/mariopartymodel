@@ -66,6 +66,9 @@ pred wellformed[b: Board] {
     (#{g : b.board | g.color = Green } = 1) // 1
     (#{bl : b.board | bl.color = Blue } = 5) // 5
     one t : b.board | t.index = 0
+    // all p : Player | { //for some reason this utterly breaks the code
+    //     p.position in b.board
+    // }
 
     // Star.tile in b.board and Star.tile.index > 2
 
@@ -229,6 +232,7 @@ pred final {
 
 pred trace_base {
     init
+    always wellformedall
     always game_turn
 }
 

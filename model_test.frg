@@ -48,7 +48,7 @@ test suite for init { //also tests wellformedness
             init
         } for 5 Int is sat
         badPlayerCoins : {
-            all t : Tile | all b : Board {
+            all t : Tile | all b : Board | {
                 t in b.board
                 t.color = Red or t.color = Green or t.color = Blue
                 (#{r : b.board | r.color = Red} = 2) // 2
@@ -58,7 +58,7 @@ test suite for init { //also tests wellformedness
                 t.next.index = add[t.index, 1] or t.next.index = 0
                 t.next.index = 0 => t.index = 7
             }
-            some p : Player {
+            some p : Player  | {
                 p.position = 0
                 p.coins = 6
                 p.stars = 0
@@ -158,27 +158,35 @@ test suite for init { //also tests wellformedness
 test suite for move { //using game_turn pred
     test expect {
         validNormalMove : {
-            wellformedall
-            Mario.position.index = 0
-            move[Mario, 1]
-            Mario.position'.index = 1
-        } for 5 Int, 1 Board is sat
+            // init
+            // wellformedall
+            some b : Board | wellformed[b]
+            // all p : Player | p.position.index = 0
+            // Mario not in Board.playersMoved
+            // Mario.position.index = 0
+            // move[Mario, 1]
+            // Mario.position'.index = 1
+        } for 5 Int, 1 Board is unsat
         validWrapMove : {
-            wellformedall
+            // wellformedall
+            some b : Board | wellformed[b]
             Mario.position.index = 7
             move[Mario, 3]
             Mario.position'.index = 2
         } for 5 Int, 1 Board is sat
         validMushroomMove: {
-            wellformedall
+            // wellformedall
+            some b : Board | wellformed[b]
+
             Mario.items[Mushroom] = 1
             Mario.position.index = 0
             move[Mario, 1]
             Mario.position'.index = 4
             // Mario.items'[Mushroom] = 0
-        } for 5 Int, 1 Board is sat
+        } for 5 Int, 1 Board, 8 Tile is sat
         validMushroomWrapMove : {
-            wellformedall
+            // wellformedall
+            some b : Board | wellformed[b]
             Mario.items[Mushroom] = 1
             Mario.position.index = 7
             move[Mario, 1]
@@ -186,25 +194,48 @@ test suite for move { //using game_turn pred
             // Mario.items'[Mushroom] = 0
         } for 5 Int, 1 Board is sat
         invalidMushroomMove : {
-            wellformedall
+            // wellformedall
+            some b : Board | wellformed[b]
             Mario.items[Mushroom] = 0
+            Mario.items[GenieLamp] = 0
             Mario.position.index = 0
             move[Mario, 1]
             Mario.position'.index = 3
         } for 5 Int, 1 Board is unsat
         invalidMushroomWrapMove: {
-            b : Board | wellformed[b]
+            some b : Board | wellformed[b]
+            // wellformedall
             Mario.items[Mushroom] = 0
+            Mario.items[GenieLamp] = 0
             Mario.position.index = 7
             move[Mario, 1]
             Mario.position'.index = 3
         } for 5 Int, 1 Board, 8 Tile is unsat
         validFireFlowerMove : {
-            wellformedall
+            // wellformedall
+            some b : Board | wellformed[b]
             Mario.items[FireFlower] = 1
             Mario.position.index = 0
             move[Mario, 1]
             Mario.position'.index = 1
+            Mario.items'[FireFlower] = 0
+        } for 5 Int, 1 Board is sat
+        validFireFlowerMove : {
+            // wellformedall
+            some b : Board | wellformed[b]
+            Mario.items[FireFlower] = 1
+            Mario.position.index = 0
+            move[Mario, 1]
+            Mario.position'.index = 1
+            Mario.items'[FireFlower] = 0
+        } for 5 Int, 1 Board is sat
+        inalidFireFlowerMove : { //only can use one item at a time
+            // wellformedall
+            some b : Board | wellformed[b]
+            Mario.items[FireFlower] = 1
+            Mario.position.index = 0
+            move[Mario, 1]
+            Mario.position'.index = 2
             Mario.items'[FireFlower] = 0
         } for 5 Int, 1 Board is sat
     }
