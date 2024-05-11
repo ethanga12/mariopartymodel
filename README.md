@@ -1,7 +1,12 @@
 - What tradeoffs did you make in choosing your representation? What else did you try that didn’t work as well?
+
 - What assumptions did you make about scope? What are the limits of your model?
+
 - Did your goals change at all from your proposal? Did you realize anything you planned was unrealistic, or that anything you thought was unrealistic was doable?
+
 - How should we understand an instance of your model and what your visualization shows (whether custom or default)?
+
+With regards to testing, we found smaller unit tests of individual predicates to be the most useful, as we struggled with some unexpected unsats
 
 FROM CURIOSITY MODELING
 - Project Objective: What are you trying to model? Include a brief description that would give someone unfamiliar with the topic a basic understanding of your goal.
