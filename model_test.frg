@@ -20,9 +20,6 @@ option solver Glucose
 //coin increment on blue tile
 //star moves after purchase
 //movement and looping the board
-//players can't move more than 7 without a mushroom
-//player can only move 0 if they used a fireflower
-//player can only move 9 if they used a mushroom
 //Once a player has a star, they can't lose it
 //All players have moved before a minigame 
 //All players can move again after a minigame
