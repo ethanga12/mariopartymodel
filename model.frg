@@ -156,7 +156,7 @@ pred useItem[p: Player, moveTo: Tile] {
         i in Mushroom => {
             one tileAfterItem : Tile | {
                 -- now create a new tile that includes the effects of the item
-                tileAfterItem.index = add[moveTo.index, 3]
+                tileAfterItem.index = moveTo.next.next.next
 
                 -- move to that tile instead of the original moveTo
                 p.position' = tileAfterItem

@@ -40,12 +40,13 @@ test suite for init { //also tests wellformedness
             all p : Player | all b : Board {
                 p.position = 0
                 p.coins = 5
-                p.star = 0
+                p.stars = 0
                 p.items[Mushroom] = 0 
-                p.items[Fireflower] = 0
+                p.items[FireFlower] = 0
                 p.items[GenieLamp] = 0
             }
-        } is sat
+            init
+        } for 5 Int is sat
         badPlayerCoins : {
             all t : Tile | all b : Board {
                 t in b.board
@@ -57,15 +58,16 @@ test suite for init { //also tests wellformedness
                 t.next.index = add[t.index, 1] or t.next.index = 0
                 t.next.index = 0 => t.index = 7
             }
-            some p : Player | all b : Board {
+            some p : Player {
                 p.position = 0
                 p.coins = 6
-                p.star = 0
+                p.stars = 0
                 p.items[Mushroom] = 0 
-                p.items[Fireflower] = 0
+                p.items[FireFlower] = 0
                 p.items[GenieLamp] = 0
             }
-        } is unsat
+            init
+        } for 5 Int is unsat
         badPlayerItems : {
             all t : Tile | all b : Board {
                 t in b.board
@@ -77,15 +79,16 @@ test suite for init { //also tests wellformedness
                 t.next.index = add[t.index, 1] or t.next.index = 0
                 t.next.index = 0 => t.index = 7
             }
-            some p : Player | all b : Board {
+            some p : Player {
                 p.position = 0
                 p.coins = 5
-                p.star = 0
+                p.stars = 0
                 p.items[Mushroom] > 0 or
-                p.items[Fireflower] > 0 or 
+                p.items[FireFlower] > 0 or 
                 p.items[GenieLamp] > 0
             }
-        } is unsat
+            init
+        } for 5 Int is unsat
         badPlayerStars : {
             all t : Tile | all b : Board {
                 t in b.board
@@ -97,15 +100,16 @@ test suite for init { //also tests wellformedness
                 t.next.index = add[t.index, 1] or t.next.index = 0
                 t.next.index = 0 => t.index = 7
             }
-            some p : Player | all b : Board {
+            some p : Player {
                 p.position = 0
                 p.coins = 5
-                p.star = 1
+                p.stars = 1
                 p.items[Mushroom] = 0
-                p.items[Fireflower] = 0 
+                p.items[FireFlower] = 0 
                 p.items[GenieLamp] = 0
             }
-        } is unsat
+            init
+        } for 5 Int is unsat
         noGreen : {
             all t : Tile | all b : Board {
                 t in b.board
@@ -117,15 +121,16 @@ test suite for init { //also tests wellformedness
                 t.next.index = add[t.index, 1] or t.next.index = 0
                 t.next.index = 0 => t.index = 7
             }
-            some p : Player | all b : Board {
+            some p : Player {
                 p.position = 0
                 p.coins = 5
-                p.star = 0
+                p.stars = 0
                 p.items[Mushroom] = 0
-                p.items[Fireflower] = 0 
+                p.items[FireFlower] = 0 
                 p.items[GenieLamp] = 0
             }
-        } is unsat
+            init 
+        } for 5 Int is unsat
         wrongTileDistribution : {
             all t : Tile | all b : Board {
                 t in b.board
@@ -137,46 +142,74 @@ test suite for init { //also tests wellformedness
                 t.next.index = add[t.index, 1] or t.next.index = 0
                 t.next.index = 0 => t.index = 7
             }
-            some p : Player | all b : Board {
+            some p : Player {
                 p.position = 0
                 p.coins = 5
-                p.star = 0
+                p.stars = 0
                 p.items[Mushroom] = 0
-                p.items[Fireflower] = 0 
+                p.items[FireFlower] = 0 
                 p.items[GenieLamp] = 0
             }
-        } is unsat
+            init
+        } for 5 Int, 1 Board is unsat
     }
 }
 
-test suite for move {
+test suite for move { //using game_turn pred
     test expect {
         validNormalMove : {
-            some p : Player | some b : Board {
-                p.position = 0
-                p.position' = 1 or 
-                p.position' = 2 or 
-                p.position' = 3 or
-                p.position' = 4 or
-                p.position' = 5 or
-                p.position' = 6 
-            } is sat
-        }
-         validGreenTileMove : {
-            some p : Player | some b : Board {
-                p.position = 0
-                p.position' = 1 or 
-                p.position' = 2 or 
-                p.position' = 3 or
-                p.position' = 4 or
-                p.position' = 5 or
-                p.position' = 6 
-                p.items[Mushroom] = 0
-            } is sat
-            
-        }
+            wellformedall
+            Mario.position.index = 0
+            move[Mario, 1]
+            Mario.position'.index = 1
+        } for 5 Int, 1 Board is sat
+        validWrapMove : {
+            wellformedall
+            Mario.position.index = 7
+            move[Mario, 3]
+            Mario.position'.index = 2
+        } for 5 Int, 1 Board is sat
+        validMushroomMove: {
+            wellformedall
+            Mario.items[Mushroom] = 1
+            Mario.position.index = 0
+            move[Mario, 1]
+            Mario.position'.index = 4
+            // Mario.items'[Mushroom] = 0
+        } for 5 Int, 1 Board is sat
+        validMushroomWrapMove : {
+            wellformedall
+            Mario.items[Mushroom] = 1
+            Mario.position.index = 7
+            move[Mario, 1]
+            Mario.position'.index = 3
+            // Mario.items'[Mushroom] = 0
+        } for 5 Int, 1 Board is sat
+        invalidMushroomMove : {
+            wellformedall
+            Mario.items[Mushroom] = 0
+            Mario.position.index = 0
+            move[Mario, 1]
+            Mario.position'.index = 3
+        } for 5 Int, 1 Board is unsat
+        invalidMushroomWrapMove: {
+            b : Board | wellformed[b]
+            Mario.items[Mushroom] = 0
+            Mario.position.index = 7
+            move[Mario, 1]
+            Mario.position'.index = 3
+        } for 5 Int, 1 Board, 8 Tile is unsat
+        validFireFlowerMove : {
+            wellformedall
+            Mario.items[FireFlower] = 1
+            Mario.position.index = 0
+            move[Mario, 1]
+            Mario.position'.index = 1
+            Mario.items'[FireFlower] = 0
+        } for 5 Int, 1 Board is sat
     }
 }
+
 
 
 
