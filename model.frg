@@ -47,7 +47,6 @@ sig Board { //Board sig
 
 pred wellformed[b: Board] {
 	-- all nodes are reachable from the root
-    	-- all nodes are reachable from the root
     all t : Tile { 
         t in b.board
         t.next != t
@@ -67,7 +66,8 @@ pred wellformed[b: Board] {
     (#{g : b.board | g.color = Green } = 1) // 1
     (#{bl : b.board | bl.color = Blue } = 5) // 5
     one t : b.board | t.index = 0
-    // Star.tile in b.board and Star.tile.index > 2}
+
+    // Star.tile in b.board and Star.tile.index > 2
 
     b.playersMoved = none
 }
@@ -156,7 +156,7 @@ pred useItem[p: Player, moveTo: Tile] {
         i in Mushroom => {
             one tileAfterItem : Tile | {
                 -- now create a new tile that includes the effects of the item
-                tileAfterItem.index = moveTo.next.next.next
+                tileAfterItem.index = moveTo.next.next.next.index
 
                 -- move to that tile instead of the original moveTo
                 p.position' = tileAfterItem
@@ -229,8 +229,8 @@ pred final {
 
 pred trace_base {
     init
-    always wellformedall
     always game_turn
+    // eventually final //adding eventually final increases the time to solve significantly
 }
 
 pred wellformedall {
