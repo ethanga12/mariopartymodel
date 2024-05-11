@@ -524,9 +524,3 @@ test suite for trace_base { //This is more to see what forge decides to do here 
         } for 5 Int, 2 Board is unsat
     }
 }
-
-
-
-
-
-

@@ -1,13 +1,12 @@
 #lang forge/temporal
 
-// option problem_type temporal
 option max_tracelength 20
 option min_tracelength 20
 option solver Glucose
 
 sig Tile {
 	next: one Tile,
-    back: one Tile, //are we gonna do this 
+    back: one Tile,
     index: one Int,
     color: one Color
 }
@@ -27,6 +26,7 @@ one sig Star {
     var tile: one Tile,
     var price: one Int
 }
+
 abstract sig Player {
     var coins: one Int,
     var position: one Tile,
@@ -42,9 +42,10 @@ one sig Yoshi extends Player {}
 
 sig Board { //Board sig
     board: set Tile,
-    var playersMoved: set Player
+    var playersMoved: set Player // used to track which players have moved in a given turn; reset once all four have gone in order to repeat
 }
 
+-- wellformed predicate that ensures the board is wellformed
 pred wellformed[b: Board] {
 	-- all nodes are reachable from the root
     all t : Tile { 
@@ -67,14 +68,14 @@ pred wellformed[b: Board] {
     (#{bl : b.board | bl.color = Blue } = 5) // 5
     one t : b.board | t.index = 0
 
-    // Star.tile in b.board and Star.tile.index > 2
-
     b.playersMoved = none
+
+    Star.price > 0
 }
 
+-- init predicate that initializes the game state
 pred init {
     all p: Player | p.coins = 5
-    // all p: Player | #{p.items} = 1
     all p : Player | {
         p.items[Mushroom] = 0
         p.items[FireFlower] = 0
@@ -87,21 +88,25 @@ pred init {
     all b: Board | wellformed[b]
 }
 
+-- main predicate that moves the specified player r spaces forward
 pred move[p: Player, r: Int] {
+    -- moveTo = new position of player, current = current position of player
     one moveTo: Tile, current: Tile | {
-        // item not in p.items
         p.position = current
         some t : Tile | one root : Tile | {
             root.index = 0
+            -- handle the two cases of moving forward:
+            -- 1. if the player is moving forward and not circling back to the beginning
+            -- 2. if the player is moving forward and circling back to the beginning
             add[current.index, r] <= subtract[#{Tile}, 1] => {
                 moveTo.index = add[current.index, r]
             } else {
-                -- get the last index of the board, subtract from the current index, and add to r to get the new index
+                -- if it is looping, get the last index of the board, subtract from the current index, and add to r to get the new index
                 moveTo.index = add[subtract[current.index, #{Tile}], r]
             }
-            
         }
 
+        -- handling the blue tile case where player gains a coin and either uses an item or simply moves to the position of that tile
         moveTo.color = Blue => {
             p.coins' = add[p.coins, 1]
             useItem[p, moveTo] or {
@@ -110,6 +115,7 @@ pred move[p: Player, r: Int] {
             }
         }
 
+        -- handling the red tile case where player loses a coin and either uses an item or simply moves to the position of that tile
         moveTo.color = Red => {
             p.coins' = subtract[p.coins, 1]
             useItem[p, moveTo] or {
@@ -118,6 +124,7 @@ pred move[p: Player, r: Int] {
             }
         }
 
+        -- handling the green tile case where player gains an item, and cannot use an item
         moveTo.color = Green => {
             p.coins' = p.coins
             one i : Item | all other: Item | {
@@ -127,18 +134,17 @@ pred move[p: Player, r: Int] {
             p.position' = moveTo
         }
 
-        -- check if player passed the star when getting to new position
+        -- check if player passed the star when getting to new position, and add star if they have enough coins + move star on board
         some tilesToStar : Int | {
             { tilesToStar <= r and tilesToStar >= 0 } => {
                 add[p.position.index, tilesToStar] = Star.tile.index
                 p.coins >= Star.price => {
                     p.stars' = add[p.stars, 1]
-                    // p.coins' = subtract[p.coins, Star.price]
+                    starMove
                 } else {
                     p.stars' = p.stars
-                    // p.coins' = p.coins
+                    starStay
                 }
-                starMove
             } else {
                 p.stars' = p.stars
                 starStay
@@ -147,12 +153,16 @@ pred move[p: Player, r: Int] {
     }
 }
 
+-- Helper predicate that handles the use of an item by a player
 pred useItem[p: Player, moveTo: Tile] {
     one i : Item | all other : Item | {
         i != other => p.items'[other] = p.items[other]
+
         -- ensure that player has at least one of the item and then remove one from their inventory
         p.items[i] > 0
         p.items'[i] = subtract[p.items[i], 1]
+
+        -- mushroom moves player forward an additional 3 spaces
         i in Mushroom => {
             one tileAfterItem : Tile | {
                 -- now create a new tile that includes the effects of the item
@@ -162,15 +172,20 @@ pred useItem[p: Player, moveTo: Tile] {
                 p.position' = tileAfterItem
             }
         }
+
+        -- genie lamp moves player to the current location of the star
         i in GenieLamp => {
             p.position' = Star.tile
         }
+
+        -- fire flower glues player in place
         i in FireFlower => {
             p.position' = moveTo
         }
     }
 }
 
+-- Helper predicate that ensures all other players stay put while one player moves
 pred stayPut[p: Player] {
     p.coins' = p.coins
     p.items' = p.items
@@ -178,10 +193,12 @@ pred stayPut[p: Player] {
     p.position' = p.position
 }
 
+-- Helper predicate that moves the player anywhere from 1-6 spaces during their turn
 pred move_player_turn[p: Player] {
     move[p, 1] or move[p, 2] or move[p, 3] or move[p, 4] or move[p, 5] or move[p, 6]
 }
 
+-- Main predicate that handles each player's turn and the minigame that follows
 pred game_turn {
     one b: Board | {
         #{b.playersMoved} = 4 => {
@@ -200,6 +217,7 @@ pred game_turn {
     }
 }
 
+-- Helper predicate that handles the minigame that occurs after all players have moved, giving each player 0-2 coins
 pred minigame {
     starStay
     all p: Player | {
@@ -211,33 +229,31 @@ pred minigame {
     }
 }
 
+-- Helper predicates that handle the movement of the star after a player buys it
 pred starMove{
+    Star.price' >= 0
+    Star.price >= 0
     one moveTo: Tile | {
         moveTo != Star.tile
         moveTo = Star.tile'
     }
 }
 
+-- Helper predicates that handle the star staying in place when it is not bought
 pred starStay{
+    Star.price' >= 0
+    Star.price >= 0
     Star.tile' = Star.tile
     Star.price' = Star.price
 }
 
-pred final {
-    some p: Player | p.stars = 1
-}
-
-pred trace_base {
+pred traces {
     init
     always game_turn
-    // eventually final //adding eventually final increases the time to solve significantly
 }
 
 pred wellformedall {
     all b: Board | wellformed[b]
 }
 
-// run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
-run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 5 Int
-// run { trace_base } for exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
-// run { wellformedall } for 7 Int, exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 16 Tile
+run { traces } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 5 Int
