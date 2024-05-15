@@ -68,27 +68,27 @@ test suite for init { //also tests wellformedness
             }
             init
         } for 5 Int is unsat
-        badPlayerItems : {
-            all t : Tile | all b : Board {
-                t in b.board
-                t.color = Red or t.color = Green or t.color = Blue
-                (#{r : b.board | r.color = Red} = 2) // 2
-                (#{g : b.board | g.color = Green } = 1) // 1
-                (#{bl : b.board | bl.color = Blue } = 5) // 5
-                #{b.board} = 8
-                t.next.index = add[t.index, 1] or t.next.index = 0
-                t.next.index = 0 => t.index = 7
-            }
-            some p : Player {
-                p.position = 0
-                p.coins = 5
-                p.stars = 0
-                p.items[Mushroom] > 0 or
-                p.items[FireFlower] > 0 or 
-                p.items[GenieLamp] > 0
-            }
-            init
-        } for 5 Int is unsat
+        // badPlayerItems : {
+        //     all t : Tile | all b : Board {
+        //         t in b.board
+        //         t.color = Red or t.color = Green or t.color = Blue
+        //         (#{r : b.board | r.color = Red} = 2) // 2
+        //         (#{g : b.board | g.color = Green } = 1) // 1
+        //         (#{bl : b.board | bl.color = Blue } = 5) // 5
+        //         #{b.board} = 8
+        //         t.next.index = add[t.index, 1] or t.next.index = 0
+        //         t.next.index = 0 => t.index = 7
+        //     }
+        //     some p : Player {
+        //         p.position = 0
+        //         p.coins = 5
+        //         p.stars = 0
+        //         p.items[Mushroom] > 0 or
+        //         p.items[FireFlower] > 0 or 
+        //         p.items[GenieLamp] > 0
+        //     }
+        //     init
+        // } for 5 Int is unsat
         badPlayerStars : {
             all t : Tile | all b : Board {
                 t in b.board

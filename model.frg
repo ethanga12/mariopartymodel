@@ -68,7 +68,7 @@ pred wellformed[b: Board] {
     one t : b.board | t.index = 0
 
     // Star.tile in b.board and Star.tile.index > 2
-
+    all p: Player { | }
     b.playersMoved = none
 }
 
@@ -238,6 +238,6 @@ pred wellformedall {
 }
 
 // run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
-run { trace_base } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 5 Int
+run { 1 = 0 } for exactly 1 Board, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 5 Int
 // run { trace_base } for exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 8 Tile, 1 Green, 2 Red, 5 Blue, 6 Int, 8 Color, exactly 20 Mushroom, exactly 20 FireFlower, exactly 10 GenieLamp, 50 Item
 // run { wellformedall } for 7 Int, exactly 1 Board, exactly 1 Mario, exactly 1 Luigi, exactly 1 Toad, exactly 1 Yoshi, exactly 16 Tile
